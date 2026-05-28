@@ -48,6 +48,19 @@
       margin-bottom: 16px;
     }
     
+    .row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .form-help {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.4;
+    }
+    
     label {
       display: block;
       margin-bottom: 6px;
@@ -56,6 +69,8 @@
       font-size: 0.9rem;
     }
 
+    select,
+    input[type="text"],
     input[type="url"] {
       width: 100%;
       padding: 10px 12px;
@@ -65,14 +80,70 @@
       outline: none;
       transition: border-color 0.2s;
       font-family: inherit;
+      background: #fff;
     }
     
+    select:focus,
+    input[type="text"]:focus,
     input[type="url"]:focus {
       border-color: #333;
     }
 
+    input[type="text"]::placeholder,
     input[type="url"]::placeholder {
       color: #999;
+    }
+
+    input[type="color"] {
+      width: 58px;
+      min-width: 58px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      background: none;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+
+    input[type="color"]:focus {
+      border-color: #333;
+    }
+
+    input[type="color"]:active {
+      transform: scale(0.98);
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: none;
+      border-radius: 10px;
+    }
+
+    .small-label {
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 4px;
+      display: block;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .slider-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .advanced-settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
     }
     
     .buttons {
@@ -247,12 +318,51 @@
     <p class="subtitle">Convert any link into a QR code and download it as PNG.</p>
 
     <div class="form-group">
-      <label for="linkInput">URL</label>
-      <input id="linkInput" type="url" placeholder="https://example.com" value="https://example.com" />
+      <label for="typeSelect">Content type</label>
+      <select id="typeSelect">
+        <option value="url" selected>URL</option>
+        <option value="text">Text</option>
+        <option value="email">Email</option>
+        <option value="phone">Phone</option>
+        <option value="wifi">Wi-Fi</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="linkInput" id="inputLabel">URL</label>
+      <input id="linkInput" type="text" placeholder="https://example.com" value="https://example.com" />
+      <p class="form-help" id="helpText">Enter a web link to create a QR code.</p>
+    </div>
+
+    <div class="advanced-settings">
+      <div class="control-group">
+        <label for="sizeRange">Size</label>
+        <div class="slider-group">
+          <input id="sizeRange" type="range" min="180" max="480" value="280" />
+          <span class="small-label" id="sizeValue">280 × 280</span>
+        </div>
+      </div>
+      <div class="control-group">
+        <label for="colorInput">Foreground</label>
+        <input id="colorInput" type="color" value="#000000" />
+      </div>
+      <div class="control-group">
+        <label for="backgroundInput">Background</label>
+        <input id="backgroundInput" type="color" value="#ffffff" />
+      </div>
+      <div class="control-group">
+        <label for="levelSelect">Error correction</label>
+        <select id="levelSelect">
+          <option value="M" selected>Medium</option>
+          <option value="L">Low</option>
+          <option value="Q">Quartile</option>
+          <option value="H">High</option>
+        </select>
+      </div>
     </div>
 
     <div class="buttons">
-      <button id="generateBtn" class="generate-btn">Generate</button>
+      <button id="generateBtn" class="generate-btn" disabled>Generate</button>
       <button id="downloadBtn" class="download-btn" disabled>Download</button>
       <button id="clearBtn" class="clear-btn" disabled>Clear</button>
     </div>
@@ -266,6 +376,7 @@
       </div>
       <div class="action-buttons" id="actionButtons" style="display: none;">
         <button id="copyBtn" class="copy-btn">Copy URL</button>
+        <button id="copyImageBtn" class="copy-btn">Copy Image</button>
       </div>
       <div class="url-display" id="urlDisplay" style="display: none;"></div>
       <p class="message" id="message"></p>
@@ -275,17 +386,27 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
   <script>
     const linkInput = document.getElementById('linkInput');
+    const typeSelect = document.getElementById('typeSelect');
+    const sizeRange = document.getElementById('sizeRange');
+    const sizeValue = document.getElementById('sizeValue');
+    const colorInput = document.getElementById('colorInput');
+    const backgroundInput = document.getElementById('backgroundInput');
+    const levelSelect = document.getElementById('levelSelect');
     const generateBtn = document.getElementById('generateBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const clearBtn = document.getElementById('clearBtn');
     const copyBtn = document.getElementById('copyBtn');
+    const copyImageBtn = document.getElementById('copyImageBtn');
     const qrPreview = document.getElementById('qrPreview');
     const message = document.getElementById('message');
     const urlDisplay = document.getElementById('urlDisplay');
     const actionButtons = document.getElementById('actionButtons');
+    const inputLabel = document.getElementById('inputLabel');
+    const helpText = document.getElementById('helpText');
 
     let currentCanvas = null;
-    let currentUrl = null;
+    let currentData = null;
+    let currentType = 'url';
 
     function updateMessage(text, type = 'info') {
       message.textContent = text;
@@ -297,7 +418,7 @@
           if (message.className.includes('success')) {
             message.style.display = 'none';
           }
-        }, 3000);
+        }, 2500);
       }
     }
 
@@ -310,37 +431,133 @@
       urlDisplay.style.display = 'none';
       downloadBtn.disabled = true;
       clearBtn.disabled = true;
+      generateBtn.disabled = true;
+      copyImageBtn.disabled = true;
       currentCanvas = null;
-      currentUrl = null;
+      currentData = null;
       message.style.display = 'none';
     }
 
-    function generateQRCode() {
-      const url = linkInput.value.trim();
-      if (!url) {
-        updateMessage('Please enter a valid URL.', 'error');
-        return;
+    function updateTypeInfo() {
+      currentType = typeSelect.value;
+      const examples = {
+        url: 'https://example.com',
+        text: 'Hello world! This text becomes a QR code.',
+        email: 'mailto:john@example.com',
+        phone: 'tel:+1234567890',
+        wifi: 'WIFI:T:WPA;S:MyNetwork;P:MyPassword;;'
+      };
+      const labels = {
+        url: 'URL',
+        text: 'Text',
+        email: 'Email link',
+        phone: 'Phone number',
+        wifi: 'Wi-Fi config'
+      };
+      const help = {
+        url: 'Enter a web address to generate a QR code for a website.',
+        text: 'Enter plain text to encode into a QR code.',
+        email: 'Use a mailto link to generate a QR code that opens email.',
+        phone: 'Use tel: format or enter a phone number to create a call QR code.',
+        wifi: 'Use WIFI format to encode network SSID, password, and type.'
+      };
+
+      inputLabel.textContent = labels[currentType];
+      helpText.textContent = help[currentType];
+      linkInput.placeholder = examples[currentType];
+      updateCopyButton();
+      updateCopyButton();
+      validateInput();
+    }
+
+    function validateInput() {
+      const value = linkInput.value.trim();
+      let valid = false;
+      let errorMessage = '';
+
+      if (!value) {
+        errorMessage = 'Enter content to generate a QR code.';
+      } else if (currentType === 'url') {
+        try {
+          const parsed = new URL(value);
+          valid = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+          if (!valid) errorMessage = 'URL must use http or https.';
+        } catch {
+          errorMessage = 'Enter a valid web URL.';
+        }
+      } else if (currentType === 'email') {
+        valid = /^mailto:[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(value);
+        if (!valid) errorMessage = 'Use mailto:example@example.com format.';
+      } else if (currentType === 'phone') {
+        valid = /^(tel:)?\+?[0-9\s-()]{7,}$/i.test(value);
+        if (!valid) errorMessage = 'Enter a valid phone number or tel:+1234567890.';
+      } else if (currentType === 'wifi') {
+        valid = /^WIFI:T:[^;]+;S:[^;]+;P:[^;]+;;$/i.test(value);
+        if (!valid) errorMessage = 'Use WIFI:T:WPA;S:Network;P:Password;; format.';
+      } else {
+        valid = value.length > 0;
       }
 
+      generateBtn.disabled = !valid;
+      if (!valid && value) {
+        updateMessage(errorMessage || 'Fix the input before generating.', 'error');
+      } else if (!value) {
+        message.style.display = 'none';
+      } else {
+        message.style.display = 'none';
+      }
+
+      return valid;
+    }
+
+    function getTextLabel() {
+      if (currentType === 'url') return 'URL';
+      if (currentType === 'email') return 'Email';
+      if (currentType === 'phone') return 'Phone';
+      if (currentType === 'wifi') return 'Wi-Fi';
+      return 'Text';
+    }
+
+    function updateCopyButton() {
+      copyBtn.textContent = `Copy ${getTextLabel()}`;
+    }
+
+    function generateQRCode() {
+      const value = linkInput.value.trim();
+      if (!validateInput()) return;
+
+      const size = Number(sizeRange.value);
+      const color = colorInput.value;
+      const background = backgroundInput.value;
+      const level = levelSelect.value;
+
       qrPreview.innerHTML = '';
-      
-      QRCode.toCanvas(url, { width: 280, margin: 1 }, (error, canvas) => {
+
+      QRCode.toCanvas(value, {
+        width: size,
+        margin: 1,
+        color: {
+          dark: color,
+          light: background
+        },
+        errorCorrectionLevel: level
+      }, (error, canvas) => {
         if (error) {
-          updateMessage('Error generating QR code. Try again.', 'error');
           console.error(error);
+          updateMessage('Unable to generate QR code. Please try again.', 'error');
           downloadBtn.disabled = true;
-          clearBtn.disabled = true;
+          clearBtn.disabled = false;
           return;
         }
 
         currentCanvas = canvas;
-        currentUrl = url;
-        qrPreview.innerHTML = '';
+        currentData = value;
         qrPreview.appendChild(canvas);
         downloadBtn.disabled = false;
         clearBtn.disabled = false;
+        copyImageBtn.disabled = false;
         actionButtons.style.display = 'flex';
-        urlDisplay.innerHTML = `<strong>URL:</strong> ${url}`;
+        urlDisplay.innerHTML = `<strong>${getTextLabel()}:</strong> ${value}`;
         urlDisplay.style.display = 'block';
         updateMessage('QR code generated successfully.', 'success');
       });
@@ -354,12 +571,12 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      updateMessage('Downloaded.', 'success');
+      updateMessage('Download started.', 'success');
     }
 
     function copyURL() {
-      if (!currentUrl) return;
-      navigator.clipboard.writeText(currentUrl).then(() => {
+      if (!currentData) return;
+      navigator.clipboard.writeText(currentData).then(() => {
         const originalText = copyBtn.textContent;
         copyBtn.textContent = 'Copied';
         copyBtn.classList.add('copied');
@@ -368,25 +585,78 @@
           copyBtn.classList.remove('copied');
         }, 1500);
       }).catch(() => {
-        updateMessage('Failed to copy URL.', 'error');
+        updateMessage('Unable to copy to clipboard.', 'error');
+      });
+    }
+
+    function copyImage() {
+      if (!currentCanvas || !navigator.clipboard) {
+        updateMessage('Copying images is not supported in this browser.', 'error');
+        return;
+      }
+
+      currentCanvas.toBlob((blob) => {
+        if (!blob) {
+          updateMessage('Unable to copy QR image.', 'error');
+          return;
+        }
+
+        const item = new ClipboardItem({ 'image/png': blob });
+        navigator.clipboard.write([item]).then(() => {
+          copyImageBtn.textContent = 'Copied';
+          copyImageBtn.classList.add('copied');
+          setTimeout(() => {
+            copyImageBtn.textContent = 'Copy Image';
+            copyImageBtn.classList.remove('copied');
+          }, 1500);
+        }).catch(() => {
+          updateMessage('Unable to copy QR image.', 'error');
+        });
       });
     }
 
     function clearForm() {
       linkInput.value = '';
       resetUI();
+      typeSelect.value = 'url';
+      updateTypeInfo();
       linkInput.focus();
     }
+
+    typeSelect.addEventListener('change', () => {
+      updateTypeInfo();
+    });
+
+    linkInput.addEventListener('input', () => {
+      validateInput();
+    });
+
+    colorInput.addEventListener('input', () => {
+      /* color input itself shows current value */
+    });
+
+    backgroundInput.addEventListener('input', () => {
+      /* background input itself shows current value */
+    });
+
+    sizeRange.addEventListener('input', () => {
+      sizeValue.textContent = `${sizeRange.value} × ${sizeRange.value}`;
+    });
 
     generateBtn.addEventListener('click', generateQRCode);
     downloadBtn.addEventListener('click', downloadQRCode);
     copyBtn.addEventListener('click', copyURL);
+    copyImageBtn.addEventListener('click', copyImage);
     clearBtn.addEventListener('click', clearForm);
 
     linkInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !generateBtn.disabled) {
         generateQRCode();
       }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateTypeInfo();
     });
   </script>
 </body>
