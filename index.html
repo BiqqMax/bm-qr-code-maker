@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="A lightweight browser-based QR code maker for URLs, text, email, phone, and Wi-Fi QR codes." />
+  <meta name="theme-color" content="#111111" />
+  <meta property="og:title" content="QR Code Maker" />
+  <meta property="og:description" content="Create QR codes quickly from URLs, text, email, phone, and Wi-Fi using a responsive browser app." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
   <title>QR Code Maker</title>
   <style>
     * {
@@ -24,6 +30,8 @@
     
     .container {
       width: min(650px, 100%);
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
       background: #fff;
       padding: 32px;
       border-radius: 8px;
@@ -144,6 +152,30 @@
       grid-template-columns: 1fr 1fr;
       gap: 12px;
       margin-bottom: 16px;
+    }
+
+    @media (max-width: 620px) {
+      body {
+        align-items: stretch;
+        padding: 12px;
+      }
+
+      .container {
+        padding: 20px;
+        max-height: none;
+      }
+
+      .advanced-settings {
+        grid-template-columns: 1fr;
+      }
+
+      .buttons {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
     }
     
     .buttons {
@@ -310,6 +342,44 @@
       color: #fff;
       border-color: #333;
     }
+    
+    .site-footer {
+      margin-top: 18px;
+      padding-top: 12px;
+      border-top: 1px solid #f0f0f0;
+      font-size: 0.78rem;
+      color: #666;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .site-footer a {
+      color: #333;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .site-footer a.donate {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid #eee;
+    }
+
+    .site-footer a.donate svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -363,27 +433,25 @@
 
     <div class="buttons">
       <button id="generateBtn" class="generate-btn" disabled>Generate</button>
-      <button id="downloadBtn" class="download-btn" disabled>Download</button>
       <button id="clearBtn" class="clear-btn" disabled>Clear</button>
     </div>
 
-    <div class="qr-container">
-      <div class="qr-preview" id="qrPreview">
-        <div class="empty-state">
-          <div class="empty-state-icon">—</div>
-          <p>Generate a QR code to preview</p>
-        </div>
-      </div>
-      <div class="action-buttons" id="actionButtons" style="display: none;">
-        <button id="copyBtn" class="copy-btn">Copy URL</button>
-        <button id="copyImageBtn" class="copy-btn">Copy Image</button>
-      </div>
-      <div class="url-display" id="urlDisplay" style="display: none;"></div>
-      <p class="message" id="message"></p>
-    </div>
+    <p class="message" id="message"></p>
+
+    <footer class="site-footer" aria-label="Site footer">
+      <span>© 2026 bIqqMax</span>
+      <span>·</span>
+      <a href="LICENSE" target="_blank" rel="noopener">License</a>
+      <span>·</span>
+      <a class="donate" href="https://buymeacoffee.com/biqqmax" target="_blank" rel="noopener" aria-label="Buy me a coffee">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 8h1a3 3 0 010 6h-1v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h8a4 4 0 004 4zM6 6v10h10V10H6zM20 7a1 1 0 100-2 3 3 0 010 6 1 1 0 100-2 1 1 0 100-2z"/>
+        </svg>
+        Buy me a coffee
+      </a>
+    </footer>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
   <script>
     const linkInput = document.getElementById('linkInput');
     const typeSelect = document.getElementById('typeSelect');
@@ -393,26 +461,18 @@
     const backgroundInput = document.getElementById('backgroundInput');
     const levelSelect = document.getElementById('levelSelect');
     const generateBtn = document.getElementById('generateBtn');
-    const downloadBtn = document.getElementById('downloadBtn');
     const clearBtn = document.getElementById('clearBtn');
-    const copyBtn = document.getElementById('copyBtn');
-    const copyImageBtn = document.getElementById('copyImageBtn');
-    const qrPreview = document.getElementById('qrPreview');
     const message = document.getElementById('message');
-    const urlDisplay = document.getElementById('urlDisplay');
-    const actionButtons = document.getElementById('actionButtons');
     const inputLabel = document.getElementById('inputLabel');
     const helpText = document.getElementById('helpText');
 
-    let currentCanvas = null;
-    let currentData = null;
     let currentType = 'url';
 
     function updateMessage(text, type = 'info') {
       message.textContent = text;
       message.className = 'message ' + type;
       message.style.display = 'block';
-      
+
       if (type === 'success') {
         setTimeout(() => {
           if (message.className.includes('success')) {
@@ -423,19 +483,16 @@
     }
 
     function resetUI() {
-      qrPreview.innerHTML = `<div class="empty-state">
-        <div class="empty-state-icon">—</div>
-        <p>Generate a QR code to preview</p>
-      </div>`;
-      actionButtons.style.display = 'none';
-      urlDisplay.style.display = 'none';
-      downloadBtn.disabled = true;
-      clearBtn.disabled = true;
-      generateBtn.disabled = true;
-      copyImageBtn.disabled = true;
-      currentCanvas = null;
-      currentData = null;
       message.style.display = 'none';
+      generateBtn.disabled = true;
+      clearBtn.disabled = true;
+      sizeRange.value = '280';
+      sizeValue.textContent = '280 × 280';
+      colorInput.value = '#000000';
+      backgroundInput.value = '#ffffff';
+      levelSelect.value = 'M';
+      typeSelect.value = 'url';
+      updateTypeInfo();
     }
 
     function updateTypeInfo() {
@@ -465,8 +522,6 @@
       inputLabel.textContent = labels[currentType];
       helpText.textContent = help[currentType];
       linkInput.placeholder = examples[currentType];
-      updateCopyButton();
-      updateCopyButton();
       validateInput();
     }
 
@@ -499,6 +554,8 @@
       }
 
       generateBtn.disabled = !valid;
+      clearBtn.disabled = value.length === 0;
+
       if (!valid && value) {
         updateMessage(errorMessage || 'Fix the input before generating.', 'error');
       } else if (!value) {
@@ -510,153 +567,38 @@
       return valid;
     }
 
-    function getTextLabel() {
-      if (currentType === 'url') return 'URL';
-      if (currentType === 'email') return 'Email';
-      if (currentType === 'phone') return 'Phone';
-      if (currentType === 'wifi') return 'Wi-Fi';
-      return 'Text';
-    }
-
-    function updateCopyButton() {
-      copyBtn.textContent = `Copy ${getTextLabel()}`;
-    }
-
     function generateQRCode() {
-      const value = linkInput.value.trim();
       if (!validateInput()) return;
 
-      const size = Number(sizeRange.value);
-      const color = colorInput.value;
-      const background = backgroundInput.value;
-      const level = levelSelect.value;
-
-      qrPreview.innerHTML = '';
-
-      QRCode.toCanvas(value, {
-        width: size,
-        margin: 1,
-        color: {
-          dark: color,
-          light: background
-        },
-        errorCorrectionLevel: level
-      }, (error, canvas) => {
-        if (error) {
-          console.error(error);
-          updateMessage('Unable to generate QR code. Please try again.', 'error');
-          downloadBtn.disabled = true;
-          clearBtn.disabled = false;
-          return;
-        }
-
-        currentCanvas = canvas;
-        currentData = value;
-        qrPreview.appendChild(canvas);
-        downloadBtn.disabled = false;
-        clearBtn.disabled = false;
-        copyImageBtn.disabled = false;
-        actionButtons.style.display = 'flex';
-        urlDisplay.innerHTML = `<strong>${getTextLabel()}:</strong> ${value}`;
-        urlDisplay.style.display = 'block';
-        updateMessage('QR code generated successfully.', 'success');
+      const params = new URLSearchParams({
+        type: currentType,
+        value: linkInput.value.trim(),
+        size: sizeRange.value,
+        color: colorInput.value,
+        background: backgroundInput.value,
+        level: levelSelect.value
       });
-    }
 
-    function downloadQRCode() {
-      if (!currentCanvas) return;
-      const link = document.createElement('a');
-      link.href = currentCanvas.toDataURL('image/png');
-      link.download = 'qr-code.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      updateMessage('Download started.', 'success');
-    }
-
-    function copyURL() {
-      if (!currentData) return;
-      navigator.clipboard.writeText(currentData).then(() => {
-        const originalText = copyBtn.textContent;
-        copyBtn.textContent = 'Copied';
-        copyBtn.classList.add('copied');
-        setTimeout(() => {
-          copyBtn.textContent = originalText;
-          copyBtn.classList.remove('copied');
-        }, 1500);
-      }).catch(() => {
-        updateMessage('Unable to copy to clipboard.', 'error');
-      });
-    }
-
-    function copyImage() {
-      if (!currentCanvas || !navigator.clipboard) {
-        updateMessage('Copying images is not supported in this browser.', 'error');
-        return;
-      }
-
-      currentCanvas.toBlob((blob) => {
-        if (!blob) {
-          updateMessage('Unable to copy QR image.', 'error');
-          return;
-        }
-
-        const item = new ClipboardItem({ 'image/png': blob });
-        navigator.clipboard.write([item]).then(() => {
-          copyImageBtn.textContent = 'Copied';
-          copyImageBtn.classList.add('copied');
-          setTimeout(() => {
-            copyImageBtn.textContent = 'Copy Image';
-            copyImageBtn.classList.remove('copied');
-          }, 1500);
-        }).catch(() => {
-          updateMessage('Unable to copy QR image.', 'error');
-        });
-      });
+      window.location.href = `result.html?${params.toString()}`;
     }
 
     function clearForm() {
       linkInput.value = '';
       resetUI();
-      typeSelect.value = 'url';
-      updateTypeInfo();
       linkInput.focus();
     }
 
-    typeSelect.addEventListener('change', () => {
-      updateTypeInfo();
-    });
-
-    linkInput.addEventListener('input', () => {
-      validateInput();
-    });
-
-    colorInput.addEventListener('input', () => {
-      /* color input itself shows current value */
-    });
-
-    backgroundInput.addEventListener('input', () => {
-      /* background input itself shows current value */
-    });
-
+    typeSelect.addEventListener('change', updateTypeInfo);
+    linkInput.addEventListener('input', validateInput);
     sizeRange.addEventListener('input', () => {
       sizeValue.textContent = `${sizeRange.value} × ${sizeRange.value}`;
     });
-
     generateBtn.addEventListener('click', generateQRCode);
-    downloadBtn.addEventListener('click', downloadQRCode);
-    copyBtn.addEventListener('click', copyURL);
-    copyImageBtn.addEventListener('click', copyImage);
     clearBtn.addEventListener('click', clearForm);
 
-    linkInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && !generateBtn.disabled) {
-        generateQRCode();
-      }
-    });
-
     document.addEventListener('DOMContentLoaded', () => {
-      updateTypeInfo();
+      resetUI();
+      validateInput();
     });
   </script>
 </body>

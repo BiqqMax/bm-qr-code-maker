@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="View and download the generated QR code in a full-screen responsive result page." />
+  <meta name="theme-color" content="#111111" />
+  <meta property="og:title" content="QR Code Result" />
+  <meta property="og:description" content="View and download the generated QR code in a full-screen responsive result page." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <title>QR Code Result</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .container {
+      width: min(680px, 100%);
+      max-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 24px;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.09);
+      overflow: hidden;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-size: 1.55rem;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #5f6d7a;
+      line-height: 1.5;
+      max-width: 34rem;
+      font-size: 0.95rem;
+    }
+
+    .info {
+      font-size: 0.85rem;
+      color: #4a5568;
+      line-height: 1.5;
+      text-align: right;
+      min-width: 120px;
+    }
+
+    .qr-panel {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 260px;
+      max-height: calc(100vh - 280px);
+      padding: 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        align-items: stretch;
+        justify-content: flex-start;
+        padding: 10px;
+      }
+
+      .container {
+        width: 100%;
+        max-height: calc(100vh - 20px);
+        padding: 18px;
+      }
+
+      .top {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .info {
+        text-align: left;
+        min-width: auto;
+      }
+
+      .qr-panel {
+        min-height: 240px;
+        max-height: calc(100vh - 260px);
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+
+    .qr-panel canvas {
+      max-width: 100%;
+      height: auto !important;
+      display: block;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    button {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 0.93rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #fff;
+      color: #111;
+      min-height: 44px;
+      min-width: 120px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #f5f5f5;
+      border-color: #999;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .generate-btn {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+
+    .copy-btn {
+      background: #fff;
+      color: #111;
+    }
+
+    .clear-btn {
+      background: #fff;
+      color: #111;
+      border-color: #d1d5db;
+    }
+
+    .message {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      max-width: min(92vw, 420px);
+      width: auto;
+      z-index: 10;
+      font-size: 0.88rem;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border-left: 4px solid;
+      display: none;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+    }
+
+    .message.success {
+      background: #ecfdf5;
+      color: #166534;
+      border-left-color: #22c55e;
+    }
+
+    .message.error {
+      background: #fef2f2;
+      color: #991b1b;
+      border-left-color: #ef4444;
+    }
+
+    .message.info {
+      background: #eff6ff;
+      color: #1e3a8a;
+      border-left-color: #3b82f6;
+    }
+
+    .site-footer {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: #656c76;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .site-footer a {
+      color: #111;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .site-footer a:hover { text-decoration: underline; }
+
+    .site-footer a.donate {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid #eee;
+    }
+
+    .site-footer a.donate svg { width: 18px; height: 18px; display: block; }
+
+    @media (max-width: 520px) {
+      .container {
+        padding: 18px;
+      }
+
+      .actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <div>
+        <h1>QR Code Result</h1>
+        <p class="subtitle">Your generated QR code is shown below. It is sized to fit the screen without scrolling.</p>
+      </div>
+      <div class="info" id="infoText"></div>
+    </div>
+
+    <div class="qr-panel" id="qrPanel">
+      <div class="empty-state">Loading QR code…</div>
+    </div>
+
+    <div class="actions">
+      <button id="downloadBtn" class="generate-btn" disabled>Download PNG</button>
+      <button id="copyTextBtn" class="copy-btn" disabled>Copy Text</button>
+      <button id="copyImageBtn" class="copy-btn" disabled>Copy Image</button>
+      <button id="backBtn" class="clear-btn">Back</button>
+    </div>
+    <footer class="site-footer" aria-label="Site footer">
+      <span>© 2026 bIqqMax</span>
+      <span>·</span>
+      <a href="LICENSE" target="_blank" rel="noopener">License</a>
+      <span>·</span>
+      <a class="donate" href="https://buymeacoffee.com/biqqmax" target="_blank" rel="noopener" aria-label="Buy me a coffee">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 8h1a3 3 0 010 6h-1v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h8a4 4 0 004 4zM6 6v10h10V10H6zM20 7a1 1 0 100-2 3 3 0 010 6 1 1 0 100-2 1 1 0 100-2z"/>
+        </svg>
+        Buy me a coffee
+      </a>
+    </footer>
+  </div>
+
+  <p class="message" id="message"></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get('type') || 'url';
+    const value = params.get('value') || '';
+    const requestedSize = Number(params.get('size') || '280');
+    const color = params.get('color') || '#000000';
+    const background = params.get('background') || '#ffffff';
+    const level = params.get('level') || 'M';
+
+    const qrPanel = document.getElementById('qrPanel');
+    const infoText = document.getElementById('infoText');
+    const message = document.getElementById('message');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const copyTextBtn = document.getElementById('copyTextBtn');
+    const copyImageBtn = document.getElementById('copyImageBtn');
+    const backBtn = document.getElementById('backBtn');
+
+    let canvasElement = null;
+
+    function updateMessage(text, type = 'info') {
+      message.textContent = text;
+      message.className = 'message ' + type;
+      message.style.display = 'block';
+      if (type === 'success') {
+        setTimeout(() => {
+          if (message.className.includes('success')) {
+            message.style.display = 'none';
+          }
+        }, 2500);
+      }
+    }
+
+    function getTypeLabel() {
+      if (type === 'email') return 'Email link';
+      if (type === 'phone') return 'Phone';
+      if (type === 'wifi') return 'Wi-Fi';
+      if (type === 'text') return 'Text';
+      return 'URL';
+    }
+
+    function calculateSize() {
+      const viewportSize = Math.min(window.innerWidth, window.innerHeight - 240);
+      return Math.max(180, Math.min(requestedSize, Math.floor(viewportSize * 0.85)));
+    }
+
+    function renderQR() {
+      if (!value) {
+        qrPanel.innerHTML = '<div class="empty-state">No QR data provided. Go back and try again.</div>';
+        updateMessage('No QR data available.', 'error');
+        return;
+      }
+
+      const size = calculateSize();
+      const canvas = document.createElement('canvas');
+      canvas.style.maxWidth = '100%';
+      canvas.style.height = 'auto';
+      qrPanel.innerHTML = '';
+      qrPanel.appendChild(canvas);
+      canvasElement = canvas;
+
+      QRCode.toCanvas(canvas, value, {
+        width: size,
+        margin: 1,
+        color: {
+          dark: color,
+          light: background
+        },
+        errorCorrectionLevel: level
+      }, (error) => {
+        if (error) {
+          qrPanel.innerHTML = '<div class="empty-state">Failed to generate QR code.</div>';
+          updateMessage('Unable to render QR code.', 'error');
+          return;
+        }
+
+        downloadBtn.disabled = false;
+        copyTextBtn.disabled = false;
+        copyImageBtn.disabled = false;
+        infoText.textContent = `${getTypeLabel()} · ${size}×${size}`;
+        updateMessage('QR code generated successfully.', 'success');
+      });
+    }
+
+    function downloadQR() {
+      if (!canvasElement) return;
+      const link = document.createElement('a');
+      link.href = canvasElement.toDataURL('image/png');
+      link.download = 'qr-code.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      updateMessage('Download started.', 'success');
+    }
+
+    function copyText() {
+      if (!value) return;
+      navigator.clipboard.writeText(value).then(() => {
+        updateMessage('Text copied to clipboard.', 'success');
+      }).catch(() => {
+        updateMessage('Unable to copy text.', 'error');
+      });
+    }
+
+    function copyImage() {
+      if (!canvasElement || !navigator.clipboard) {
+        updateMessage('Image copy is not supported in this browser.', 'error');
+        return;
+      }
+      canvasElement.toBlob((blob) => {
+        if (!blob) {
+          updateMessage('Unable to copy QR image.', 'error');
+          return;
+        }
+        const item = new ClipboardItem({ 'image/png': blob });
+        navigator.clipboard.write([item]).then(() => {
+          updateMessage('QR image copied.', 'success');
+        }).catch(() => {
+          updateMessage('Unable to copy QR image.', 'error');
+        });
+      });
+    }
+
+    function goBack() {
+      window.location.href = 'index.html';
+    }
+
+    downloadBtn.addEventListener('click', downloadQR);
+    copyTextBtn.addEventListener('click', copyText);
+    copyImageBtn.addEventListener('click', copyImage);
+    backBtn.addEventListener('click', goBack);
+
+    window.addEventListener('resize', () => {
+      if (canvasElement) renderQR();
+    });
+
+    renderQR();
+  </script>
+</body>
+</html>

@@ -37,3 +37,11 @@ Contributions are welcome! If you want to improve the project:
 ## License
 
 This project is open source and distributed under the terms of the `LICENSE` file.
+
+## Author
+
+- **bIqqMax**
+
+## Donations
+
+If you'd like to support development, feel free to buy me a coffee: https://buymeacoffee.com/biqqmax
